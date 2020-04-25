@@ -1,8 +1,8 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
 import os
 os.environ['CUDA_DEVICE_ORDER']='PCI_BUS_ID'
 os.environ['CUDA_VISIBLE_DEVICES']='0'
 
-from __future__ import absolute_import, division, print_function, unicode_literals
 import tensorflow as tf
 from tensorflow import keras
 import glob
