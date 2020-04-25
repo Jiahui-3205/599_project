@@ -1,8 +1,4 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
-import os
-os.environ['CUDA_DEVICE_ORDER']='PCI_BUS_ID'
-os.environ['CUDA_VISIBLE_DEVICES']='0'
-
 import tensorflow as tf
 from tensorflow import keras
 import glob
@@ -15,7 +11,7 @@ from tensorflow.keras import layers
 import time
 
 from IPython import display
-from keras import backend
+from tensorflow.keras import backend
 
 channel=1
 (train_images, train_labels), (_, _) = tf.keras.datasets.mnist.load_data()
