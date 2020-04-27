@@ -122,12 +122,6 @@ def discriminator(width, height):
        
     return discriminator_model
 
-def mse(y_true, y_pred):
-    #mse=backend.sum(backend.sum(backend.mean(keras.backend.square(y_pred - y_true), axis=-1)))
-    mse=mean_squared_error(y_true,y_pred)
-    return np.sum(np.sum(mse,axis=1),axis=0)
-    #return mse
-
 
 def discriminator_loss(real_output, fake_output):
     real_loss = cross_entropy(tf.ones_like(real_output), real_output)
@@ -135,9 +129,9 @@ def discriminator_loss(real_output, fake_output):
     total_loss = real_loss + fake_loss
     return total_loss
 
-generator_optimizer = tf.keras.optimizers.Adam(1e-2)
-discriminator_optimizer = tf.keras.optimizers.Adam(1e-2)
-GAN_optimizer = tf.keras.optimizers.Adam(1e-2)
+generator_optimizer = tf.keras.optimizers.Adam(1e-4)
+discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
+GAN_optimizer = tf.keras.optimizers.Adam(1e-4)
 
 def get_gan_network(width, height,upscale,generator,discriminator, generator_optimizer,discriminator_optimizer):
     
@@ -148,7 +142,7 @@ def get_gan_network(width, height,upscale,generator,discriminator, generator_opt
     gan = keras.Model(inputs=gan_input, outputs=[x,gan_output])
                                    
                                    
-    gan.compile(loss=[mse, discriminator_loss],
+    gan.compile(loss=['mean_squared_error', discriminator_loss],
                 loss_weights=[1., 1e-3],
                 optimizer=GAN_optimizer)
     return gan
@@ -160,11 +154,11 @@ def train(epochs, batch_size,width, height,upscale,generator_optimizer,discrimin
     discriminator_model = discriminator(width*4, height*4)
 
 
-    generator_model.compile(loss=mse, optimizer=generator_optimizer)
+    generator_model.compile(loss='mean_squared_error', optimizer=generator_optimizer)
     discriminator_model.compile(loss=discriminator_loss, optimizer=discriminator_optimizer)
     
     gan = get_gan_network(width, height,upscale,generator_model,discriminator_model, generator_optimizer,discriminator_optimizer)
-    gan.compile(loss=[mse, discriminator_loss],optimizer=[generator_optimizer,discriminator_optimizer])
+    #gan.compile(loss=[mean_squared_error, discriminator_loss],optimizer=[generator_optimizer,discriminator_optimizer])
 
     batch_count=int(np.shape(dataset_LR)[0]/batch_size)                                 
     
@@ -180,7 +174,8 @@ def train(epochs, batch_size,width, height,upscale,generator_optimizer,discrimin
             data_SR = generator_model.predict(data_LR)
             data_HR = dataset_HR[i*batch_size:(i+1)*batch_size,:,:,:]
             
-
+            # print('sum_LR',np.sum(data_LR))
+            # print('sum_HR',np.sum(data_HR))
 
             discriminator_model.trainable = True
             generator_model.trainable = False
@@ -189,13 +184,16 @@ def train(epochs, batch_size,width, height,upscale,generator_optimizer,discrimin
             #data_new=                     
             disc_loss = discriminator_model.train_on_batch(data, label)
             print('disc_loss',disc_loss)
+            #print('data_shape',np.shape(data))
 
             discriminator_model.trainable = False
             generator_model.trainable = True
-            loss_gan = gan.train_on_batch(data_LR,label_ones)
-            
-            print('GAN_Loss',loss_gan)
-            #print(d_loss_real, loss_gan, loss_gan)
+
+            #loss_gen = generator_model.train_on_batch(data_LR,data_HR)
+            loss_gen = gan.train_on_batch(data_LR,[data_HR,label_ones])
+            #print('shape_loss_gen',np.shape(loss_gen))
+            print('loss_gen',loss_gen)
+
 
 #         if e == 1 or e % 5 == 0:
 #             plot_generated_images(e, generator)
@@ -204,5 +202,6 @@ def train(epochs, batch_size,width, height,upscale,generator_optimizer,discrimin
         discriminator_model.save('./dis_model%d.hdf5' % e)
         gan.save('./gan_model%d.hdf5' % e)
 
-train(10,300,7,7,4,generator_optimizer,discriminator_optimizer,dataset_LR,dataset_HR)
+train(100,300,7,7,4,generator_optimizer,discriminator_optimizer,dataset_LR,dataset_HR)
  #epochs, batch_size,width, height,upscale,generator_optimizer,discriminator_optimizer,dataset_LR,dataset_HR
+    
