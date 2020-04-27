@@ -1,4 +1,8 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
+import os
+os.environ['CUDA_DEVICE_ORDER']='PCI_BUS_ID'
+os.environ['CUDA_VISIBLE_DEVICES']='0'
+
 import tensorflow as tf
 from tensorflow import keras
 import glob
@@ -19,8 +23,15 @@ from skimage.metrics import mean_squared_error
 
 channel=1
 (train_images, train_labels), (_, _) = tf.keras.datasets.mnist.load_data()
-dataset_HR = train_images/255
-dataset_HR=np.reshape(dataset_HR,[60000,28,28,1])
+# dataset_HR = train_images/255
+# dataset_HR=np.reshape(dataset_HR,[60000,28,28,1])
+
+dataset_HR = train_images[0:600,:,:]/255
+dataset_HR=np.reshape(dataset_HR,[600,28,28,1])
+#ones=np.ones(60000)
+ones=np.ones(600)
+
+
 
 BUFFER_SIZE = 60000
 BATCH_SIZE = 256
@@ -81,7 +92,7 @@ def generator(width, height, upscale):
     
     model=z   
             # Using 5 Residual Blocks
-    for index in range(5):
+    for index in range(35):
         model = res_block_gen(model, 3, 64, 1)
 	    
     model = keras.layers.Conv2D(filters = 64, kernel_size = 3, strides = 1, padding = "same")(model)
@@ -129,7 +140,7 @@ def discriminator_loss(real_output, fake_output):
     total_loss = real_loss + fake_loss
     return total_loss
 
-generator_optimizer = tf.keras.optimizers.Adam(1e-4)
+generator_optimizer = tf.keras.optimizers.Adam(5e-4)
 discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
 GAN_optimizer = tf.keras.optimizers.Adam(1e-4)
 
@@ -142,20 +153,22 @@ def get_gan_network(width, height,upscale,generator,discriminator, generator_opt
     gan = keras.Model(inputs=gan_input, outputs=[x,gan_output])
                                    
                                    
-    gan.compile(loss=['mean_squared_error', discriminator_loss],
+    gan.compile(loss=['mean_squared_error', 'binary_crossentropy'],#discriminator_loss],
                 loss_weights=[1., 1e-3],
-                optimizer=GAN_optimizer)
+                optimizer=GAN_optimizer,metrics=['mse','accuracy'])
     return gan
  
 def train(epochs, batch_size,width, height,upscale,generator_optimizer,discriminator_optimizer,dataset_LR,dataset_HR):
-   
+    plt.imshow(dataset_HR[1,:,:,0] * 255, cmap='gray')
+    plt.savefig('raw.png')
+
     generator_model = generator(width, height,4)
                                    
     discriminator_model = discriminator(width*4, height*4)
 
 
     generator_model.compile(loss='mean_squared_error', optimizer=generator_optimizer)
-    discriminator_model.compile(loss=discriminator_loss, optimizer=discriminator_optimizer)
+    discriminator_model.compile(loss='binary_crossentropy', optimizer=discriminator_optimizer,metrics=['accuracy'])
     
     gan = get_gan_network(width, height,upscale,generator_model,discriminator_model, generator_optimizer,discriminator_optimizer)
     #gan.compile(loss=[mean_squared_error, discriminator_loss],optimizer=[generator_optimizer,discriminator_optimizer])
@@ -183,25 +196,34 @@ def train(epochs, batch_size,width, height,upscale,generator_optimizer,discrimin
             data=np.concatenate((data_SR,data_HR),axis = 0)                                
             #data_new=                     
             disc_loss = discriminator_model.train_on_batch(data, label)
+            print(discriminator_model.metrics_names)
             print('disc_loss',disc_loss)
             #print('data_shape',np.shape(data))
 
             discriminator_model.trainable = False
             generator_model.trainable = True
 
+            for j in range (30):
             #loss_gen = generator_model.train_on_batch(data_LR,data_HR)
-            loss_gen = gan.train_on_batch(data_LR,[data_HR,label_ones])
+              loss_gen = gan.train_on_batch(data_LR,[data_HR,label_ones])
+            print(gan.metrics_names)
             #print('shape_loss_gen',np.shape(loss_gen))
             print('loss_gen',loss_gen)
+        loss = gan.evaluate(dataset_LR, [dataset_HR,ones])
+
+        SR_show=generator_model.predict(dataset_LR[1:2,:,:,:])
+        plt.imshow(SR_show[0,:,:,0] * 255, cmap='gray')      
+        plt.savefig("%d.jpg"%(e))
+        
+        print(gan.metrics_names)
+        print('epoch',e,loss)
 
 
-#         if e == 1 or e % 5 == 0:
+        # if e == 1 or e % 15 == 0:
 #             plot_generated_images(e, generator)
-        #if e % 300 == 0:
-        generator_model.save('./gen_model%d.hdf5' % e)
-        discriminator_model.save('./dis_model%d.hdf5' % e)
-        gan.save('./gan_model%d.hdf5' % e)
+        if e % 10 == 1:
+             generator_model.save('gen_model.hdf5')
+             discriminator_model.save('dis_model.hdf5')
+            gan.save('gan_model.hdf5')
 
 train(100,300,7,7,4,generator_optimizer,discriminator_optimizer,dataset_LR,dataset_HR)
- #epochs, batch_size,width, height,upscale,generator_optimizer,discriminator_optimizer,dataset_LR,dataset_HR
-    
