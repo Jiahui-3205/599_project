@@ -64,14 +64,14 @@ for i in range (len(files)):
 files=np.delete(files,320,axis=1)
 files=np.delete(files,480,axis=2)    
 
-x_train = files[:80]
+x_train = files[:20]
 x_test = files[80:100]
 
 print("data loaded")
 
 channel=3
 dataset_HR = x_train/255
-ones=np.ones(80)
+ones=np.ones(20)
 downscale=4
 dataset_LR =np.zeros([np.shape(dataset_HR )[0],int(np.shape(dataset_HR )[1]/downscale),int(np.shape(dataset_HR )[2]/downscale),channel])
 x=np.linspace(0, np.shape(dataset_HR )[1]-downscale, int(np.shape(dataset_HR )[1]/downscale))
@@ -126,7 +126,7 @@ def generator(width, height, upscale):
     
        
             # Using 5 Residual Blocks
-    for index in range(35):
+    for index in range(10):
       model = res_block_gen(model, 3, 64, 1)
 	    
     model = keras.layers.Conv2D(filters = 64, kernel_size = 3, strides = 1, padding = "same")(model)
@@ -175,8 +175,8 @@ def discriminator_loss(real_output, fake_output):
     return total_loss
 
 generator_optimizer = tf.keras.optimizers.Adam(5e-4)
-discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
-GAN_optimizer = tf.keras.optimizers.Adam(1e-4)
+discriminator_optimizer = tf.keras.optimizers.Adam(5e-5)
+GAN_optimizer = tf.keras.optimizers.Adam(5e-5)
 
 def get_gan_network(width, height,upscale,generator,discriminator, generator_optimizer,discriminator_optimizer):
     
@@ -232,7 +232,7 @@ def train(epochs, batch_size,width, height,upscale,generator_optimizer,discrimin
             discriminator_model.trainable = False
             generator_model.trainable = True
 
-            for j in range (10):
+            for j in range (6):
             #loss_gen = generator_model.train_on_batch(data_LR,data_HR)
               loss_gan=gan.train_on_batch(data_LR,[data_HR,label_ones])
             #print(gan.metrics_names)
@@ -240,7 +240,7 @@ def train(epochs, batch_size,width, height,upscale,generator_optimizer,discrimin
             #print('loss_gen',loss_gen)
         loss = gan.evaluate(dataset_LR, [dataset_HR,ones])
 
-        SR_show=generator_model.predict(dataset_LR[1,:,:,:])
+        SR_show=generator_model.predict(dataset_LR[1:2,:,:,:])
         plt.imshow(SR_show[0,:,:,:])      
         plt.savefig("%d.jpg"%(e))
         
@@ -255,4 +255,4 @@ def train(epochs, batch_size,width, height,upscale,generator_optimizer,discrimin
              discriminator_model.save('dis_model%d.hdf5'%(e))
              gan.save('gan_model%d.hdf5'%(e))
 
-train(101,16,80,120,4,generator_optimizer,discriminator_optimizer,dataset_LR,dataset_HR)
+train(1201,2,80,120,4,generator_optimizer,discriminator_optimizer,dataset_LR,dataset_HR)
