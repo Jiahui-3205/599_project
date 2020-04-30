@@ -174,9 +174,9 @@ def discriminator_loss(real_output, fake_output):
     total_loss = real_loss + fake_loss
     return total_loss
 
-generator_optimizer = tf.keras.optimizers.Adam(5e-4)
-discriminator_optimizer = tf.keras.optimizers.Adam(5e-5)
-GAN_optimizer = tf.keras.optimizers.Adam(5e-5)
+generator_optimizer = tf.keras.optimizers.Adam(1e-3)
+discriminator_optimizer = tf.keras.optimizers.Adam(5e-4)
+GAN_optimizer = tf.keras.optimizers.Adam(5e-4)
 
 def get_gan_network(width, height,upscale,generator,discriminator, generator_optimizer,discriminator_optimizer):
     
@@ -226,8 +226,8 @@ def train(epochs, batch_size,width, height,upscale,generator_optimizer,discrimin
             data=np.concatenate((data_SR,data_HR),axis = 0)                                
             #data_new=                     
             disc_loss = discriminator_model.train_on_batch(data, label)
-            print(discriminator_model.metrics_names)
-            print('disc_loss',disc_loss)
+            #print(discriminator_model.metrics_names)
+            #print('disc_loss',disc_loss)
 
             discriminator_model.trainable = False
             generator_model.trainable = True
@@ -239,20 +239,22 @@ def train(epochs, batch_size,width, height,upscale,generator_optimizer,discrimin
             #print('shape_loss_gen',np.shape(loss_gen))
             #print('loss_gen',loss_gen)
         loss = gan.evaluate(dataset_LR, [dataset_HR,ones])
-
-        SR_show=generator_model.predict(dataset_LR[1:2,:,:,:])
-        plt.imshow(SR_show[0,:,:,:])      
-        plt.savefig("%d.jpg"%(e))
-        
         print(gan.metrics_names)
         print('epoch',e,loss)
+
+        if e % 50 == 1:
+        	SR_show=generator_model.predict(dataset_LR[1:2,:,:,:])
+        	plt.imshow(SR_show[0,:,:,:])      
+        	plt.savefig("%d.jpg"%(e))
+        
+
 
 
         # if e == 1 or e % 15 == 0:
 #             plot_generated_images(e, generator)
-        if e % 10 == 1:
+        if e % 1000 == 1:
              generator_model.save('gen_model%d.hdf5'%(e))
              discriminator_model.save('dis_model%d.hdf5'%(e))
              gan.save('gan_model%d.hdf5'%(e))
 
-train(1201,2,80,120,4,generator_optimizer,discriminator_optimizer,dataset_LR,dataset_HR)
+train(10001,2,80,120,4,generator_optimizer,discriminator_optimizer,dataset_LR,dataset_HR)
